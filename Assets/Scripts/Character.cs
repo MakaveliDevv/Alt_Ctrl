@@ -13,17 +13,33 @@ public class Character : CharacterStats
 
     void Awake() 
     {
-        movementInputGetter = GetComponent<IMovementInputGetter>();
-        char_combat = GetComponent<CharacterCombat>();
+        if(TryGetComponent<IMovementInputGetter>(out var _movement))
+            movementInputGetter = _movement;
+
+        else
+            movementInputGetter = null;
+
+
+        if(TryGetComponent<CharacterCombat>(out var _combat))   
+            char_combat = _combat;
+        
+        else 
+            char_combat = null;
+         
 
         currentHealth.SetValue(maxHealth.GetValue());
     }
     
     void Update() 
     {
-        Move();
-        char_combat.Attack();
-        char_combat.SuperAttack();
+        if(movementInputGetter != null)
+            Move();
+
+        if(char_combat != null) 
+        {
+            char_combat.Attack();
+            char_combat.SuperAttack();
+        }
     }
 
     protected void Move() 

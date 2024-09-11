@@ -127,6 +127,8 @@ public class CharacterCombat : MonoBehaviour
     {
         if (isWeaponMoving) yield break; 
 
+        
+        ableToDoDamage = true;
         isWeaponMoving = true;
         Debug.Log("Coroutine started...");
 
@@ -141,10 +143,7 @@ public class CharacterCombat : MonoBehaviour
             RotateObject(weapon, weaponEnd_Rot, 0f, 2f);
 
 
-            ableToDoDamage = true;
         }
-
-        ableToDoDamage = false;
 
         if(!superAbilityActivated) 
             yield return new WaitForSeconds(.5f);
@@ -153,7 +152,10 @@ public class CharacterCombat : MonoBehaviour
         {
             yield return new WaitForSeconds(.1f);
 
-            Instantiate(superAttackAbility, superAttackPoint.position, quaternion.identity);
+            GameObject superAbility = Instantiate(superAttackAbility, superAttackPoint.position, quaternion.identity);
+            superAbility.transform.SetParent(transform);
+
+            superAbilityActivated = false;
             
             yield return new WaitForSeconds(.5f);
         }
@@ -167,6 +169,7 @@ public class CharacterCombat : MonoBehaviour
             RotateObject(weapon, weaponStart_Rot, 0f, 1f);
         }        
 
+        ableToDoDamage = false;
         isWeaponMoving = false;
 
         // Queue attack

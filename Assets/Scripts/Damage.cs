@@ -2,10 +2,18 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Weapon : MonoBehaviour
+public class Damage : MonoBehaviour
 {
-    public CharacterCombat combat;
+    // public CharacterCombat combat;
     
+    // void Update() 
+    // {
+    //     if(combat == null) 
+    //     {
+    //         combat = GetComponentInParent<CharacterCombat>();
+    //     }
+    // }
+
     void OnTriggerEnter2D(Collider2D collider) 
     {
         if(collider.CompareTag("Player")) 
@@ -16,12 +24,12 @@ public class Weapon : MonoBehaviour
 
             if(player.TryGetComponent<CharacterStats>(out var stats)) 
             {
-                if(combat.ableToDoDamage) 
-                {
+                // if(combat.ableToDoDamage) 
+                // {
                     stats.TakeDamage(20f);
                     Debug.Log("Damage done...");
-                }
+                // }
             }
         }
-    }   
+    } 
 }
