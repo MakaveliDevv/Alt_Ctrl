@@ -3,13 +3,11 @@ using UnityEngine;
 public class Mover : MonoBehaviour
 {
     private IMovementInputGetter movementInputGetter;
-    // private CharacterStats stats;
-    private float speed = 5f;
+    public float speed = 5f;
 
     private void Awake()
     {
         movementInputGetter = GetComponent<IMovementInputGetter>();
-        // stats = GetComponent<CharacterStats>();
     }
 
     void Update() 
