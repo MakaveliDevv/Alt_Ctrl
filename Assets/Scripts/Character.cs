@@ -1,14 +1,10 @@
-using System.Collections;
-using Unity.VisualScripting;
+using System;
 using UnityEngine;
 
-/// <summary>
-/// Some methods meant for the character's behavior 
-/// </summary>
-
 public class Character : CharacterStats
-{
+{ 
     private IMovementInputGetter movementInputGetter;
+    private KeyboardMovement keyboardMovement;
     private CharacterCombat char_combat;
 
     void Awake() 
@@ -27,6 +23,11 @@ public class Character : CharacterStats
             char_combat = null;
          
 
+        keyboardMovement = GetComponent<KeyboardMovement>();
+    }
+
+    void Start() 
+    {
         currentHealth.SetValue(maxHealth.GetValue());
     }
     
@@ -44,7 +45,7 @@ public class Character : CharacterStats
 
     protected void Move() 
     {
-        Vector2 movement = new Vector2 
+        Vector2 movement = new()
         {
             x = movementInputGetter.Horizontal,
             y = movementInputGetter.Vertical
@@ -52,5 +53,21 @@ public class Character : CharacterStats
 
         movement *= movementSpeed.GetValue() * Time.deltaTime;
         transform.Translate(movement);
+
+    }
+    
+    public void Jump() 
+    {
+        if(Input.GetKeyDown(KeyCode.Space)) 
+        {
+            float elapsedTime = 0f;
+            float jumpDuration = 1f;
+            
+            while(elapsedTime < jumpDuration) 
+            {
+                keyboardMovement.Vertical = 1f;
+                elapsedTime += Time.deltaTime;
+            }
+        }
     }
 }

@@ -1,8 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// This class is meant to initialize the stats of the characters and bring changes to the stats of the character
-/// </summary>
 public class CharacterStats : MonoBehaviour
 {
     [SerializeField] protected Stats maxHealth;
