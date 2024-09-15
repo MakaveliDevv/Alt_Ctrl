@@ -10,7 +10,9 @@ public class CharacterCombat : MonoBehaviour
     [SerializeField] private GameObject weapon, shield, ability;
     [SerializeField] private Transform abilitySpawnPoint;
     [SerializeField] private bool isWeaponMoving, isShieldMoving;
-    
+
+    private CharacterStats stats;
+    private CircleCollider2D circleCol;
     private Vector3 wpnStartPos, wpnEndPos, shieldStartPos, shieldEndPos;
     private Quaternion wpnStartRot, wpnEndRot;
     private bool isNormalActive, isSuperActive, isBlockActive, isQueued;
@@ -18,6 +20,8 @@ public class CharacterCombat : MonoBehaviour
     void Awake() 
     { 
         combatState = CharacterCombatState.IDLE; 
+        stats = GetComponent<CharacterStats>();
+        circleCol = shield.GetComponent<CircleCollider2D>();
     }
 
     void Start() 
@@ -48,7 +52,7 @@ public class CharacterCombat : MonoBehaviour
             break;
 
             case CharacterCombatState.BLOCK:
-                Block();
+                Block(true);
 
             break;
 
@@ -64,10 +68,9 @@ public class CharacterCombat : MonoBehaviour
         
         if(!isNormalActive && !isSuperActive && Input.GetKeyDown(KeyCode.LeftShift)) combatState = CharacterCombatState.BLOCK;
 
-        if(Input.GetKeyUp(KeyCode.LeftShift))
+        else if(Input.GetKeyUp(KeyCode.LeftShift))
         {
-            TransformLerp(shield, shieldStartPos, 2f);
-            isBlockActive = false;
+            Block(false);
             combatState = CharacterCombatState.IDLE;
         } 
     }
@@ -84,25 +87,69 @@ public class CharacterCombat : MonoBehaviour
         StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, isSuperActive, 3f));
     }
 
-    private void Block() 
-    {
-        isBlockActive = true;
-        TransformLerp(shield, shieldEndPos, 2f);
-        // StartCoroutine(MoveObject(shield, shieldStartPos, shieldEndPos, new Quaternion(0f, 0f, 0f, 0f), new Quaternion(0f, 0f, 0f, 0f), isShieldMoving, isBlockActive, 3f));
-    }
-
-    private IEnumerator ShieldActivation() 
+    private void Block(bool active) 
     {                
-        shield.SetActive(true);
-        isBlockActive = true;
-        
-        yield return new WaitForSeconds(.5f);
-
-        shield.SetActive(false);
-        isBlockActive = false;
-
-        yield break;
+        if(active) 
+        {
+            TransformLerp(shield, shieldEndPos, 2f);
+            circleCol.enabled = true;
+            isBlockActive = true;
+        }
+        else 
+        {
+            TransformLerp(shield, shieldStartPos, 2f);
+            circleCol.enabled = false;
+            isBlockActive = false;
+        }
     }
+
+    // private IEnumerator EnergyPoints() 
+    // {
+    //     // Decrease value
+    //     if(stats.currentEnergyPoints.GetValue() > 0 && stats.currentEnergyPoints.GetValue() <= stats.maxEnergyPoints.GetValue()) 
+    //     {
+    //         // Decrease points
+    //     }
+    //     else if(stats.currentEnergyPoints.GetValue() <= 0 && stats.currentEnergyPoints.GetValue() < stats.maxEnergyPoints.GetValue()) 
+    //     {
+    //         // Increase
+    //     }
+
+    //     yield break;
+    // }
+
+    // private IEnumerator EnergyPoints() 
+    // {
+    //     // While loop to keep checking energy conditions
+    //     while (true)
+    //     {
+    //         // Decrease energy points if the player is actively doing something that costs energy (placeholder condition)
+    //         if (stats.currentEnergyPoints.GetValue() > 0 && stats.currentEnergyPoints.GetValue() <= stats.maxEnergyPoints.GetValue()) 
+    //         {
+    //             // Placeholder condition to decrease energy points (e.g., player is sprinting or using an ability)
+    //             if (/* Condition for decreasing energy, e.g., isSprinting or isUsingAbility */) 
+    //             {
+    //                 stats.currentEnergyPoints.SetValue(stats.currentEnergyPoints.GetValue() - 1);
+    //                 Debug.Log("Energy decreased: " + stats.currentEnergyPoints.GetValue());
+    //             }
+    //         }
+            
+    //         // Increase energy points when they are below the max but not zero
+    //         else if (stats.currentEnergyPoints.GetValue() <= 0 || stats.currentEnergyPoints.GetValue() < stats.maxEnergyPoints.GetValue()) 
+    //         {
+    //             // Placeholder condition to increase energy points (e.g., player is resting)
+    //             if (/* Condition for increasing energy, e.g., isResting */) 
+    //             {
+    //                 stats.currentEnergyPoints.SetValue(stats.currentEnergyPoints.GetValue() + 1);
+    //                 Debug.Log("Energy increased: " + stats.currentEnergyPoints.GetValue());
+    //             }
+    //         }
+
+    //         // Yield for a short duration before the next energy update
+    //         yield return new WaitForSeconds(1f);
+    //     }
+    // }
+
     
     private IEnumerator MoveObject(
         GameObject @object, 

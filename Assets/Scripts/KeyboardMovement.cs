@@ -1,6 +1,7 @@
+using System;
 using UnityEngine;
 
-[RequireComponent(typeof(Player))]
+[RequireComponent(typeof(Character))]
 public class KeyboardMovement : MonoBehaviour, IMovementInputGetter
 {
     private bool isJumping;

@@ -5,6 +5,7 @@ public class Character : CharacterStats
 { 
     private KeyboardMovement keyboardMovement;
     private IMovementInputGetter movementInputGetter;
+
     
     void Awake() 
     {
@@ -13,17 +14,17 @@ public class Character : CharacterStats
         if(TryGetComponent<IMovementInputGetter>(out var _movement)) movementInputGetter = _movement;
         else movementInputGetter = null;
     }
-
-    void Start() 
-    {
-        currentHealth.SetValue(maxHealth.GetValue());
-    }
     
     void Update() 
     {
         if(movementInputGetter != null) Move();
 
         if(Input.GetKeyDown(KeyCode.Space)) StartCoroutine(Jump());
+
+        if(Input.GetKeyDown(KeyCode.P)) 
+        {
+            TakeDamage(damage.GetValue());
+        }
     }
 
     protected void Move() 
