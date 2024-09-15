@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class CharacterStats : MonoBehaviour
@@ -8,22 +9,38 @@ public class CharacterStats : MonoBehaviour
     [SerializeField] protected Stats armor;
     [SerializeField] protected Stats movementSpeed;
 
-    public Stats maxEnergyPoints;
-    public Stats currentEnergyPoints;
+    [SerializeField] private Stats maxEnergy;
+    [SerializeField] private Stats currentEnergy;
 
-    public HealthBar healthBar;
+    [SerializeField] private Bar healthBar;
+    [SerializeField] private Bar energyBar;
+    public Bar shieldDurationBar;
 
     void Start() 
     {
         currentHealth.SetValue(maxHealth.GetValue());
-        healthBar.SetMaxHealth((int)currentHealth.GetValue());
+        healthBar.SetMaxValue(currentHealth.GetValue());
 
-        currentEnergyPoints.SetValue(maxEnergyPoints.GetValue());
+        currentEnergy.SetValue(maxEnergy.GetValue());
     }
 
     public void TakeDamage(float damage) 
     {
         currentHealth.SetValue(currentHealth.GetValue() - damage);
-        healthBar.SetHealth((int)currentHealth.GetValue());
+        healthBar.SetValue(currentHealth.GetValue());
     }
+
+    public void Energy(int value, bool increment) 
+    {
+        if(increment) 
+        {
+            currentEnergy.SetValue(currentEnergy.GetValue() + value);
+            energyBar.SetValue(currentEnergy.GetValue());
+        } 
+        else 
+        {
+            currentEnergy.SetValue(currentEnergy.GetValue() - value);
+            energyBar.SetValue(currentEnergy.GetValue());
+        }
+    } 
 }

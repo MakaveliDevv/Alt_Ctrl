@@ -66,27 +66,74 @@ public class CharacterCombat : MonoBehaviour
         
         else if(!isNormalActive && !isBlockActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
         
-        if(!isNormalActive && !isSuperActive && Input.GetKeyDown(KeyCode.LeftShift)) combatState = CharacterCombatState.BLOCK;
-
+        if(!isNormalActive && !isSuperActive && Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            combatState = CharacterCombatState.BLOCK;
+            // StartCoroutine(BlockDuration(3f));
+        }
         else if(Input.GetKeyUp(KeyCode.LeftShift))
         {
             Block(false);
             combatState = CharacterCombatState.IDLE;
-        } 
+        }
+    }
+
+    private IEnumerator BlockDurationIncrease(float duration)
+    {
+        float elapsedTime = 0f;
+        stats.shieldDurationBar.gameObject.SetActive(true);
+        stats.shieldDurationBar.SetMaxValue(duration);
+
+        while (elapsedTime < duration && isBlockActive)  // Block is still active
+        {
+            elapsedTime += Time.deltaTime;
+            stats.shieldDurationBar.SetValue(elapsedTime);
+
+            yield return null;
+        }
+
+        if (!isBlockActive)  // If the shield was dropped manually, stop increasing the bar
+        {
+            yield break;
+        }
+
+        // Once the duration has run out, disable the shield and bar
+        Block(false);
+        combatState = CharacterCombatState.IDLE;
+
+        Debug.Log("Blocking stopped...");
+    }
+
+   private IEnumerator BlockDurationDecrease(float duration)
+    {
+        float elapsedTime = stats.shieldDurationBar.slider.value; 
+        float decreaseDuration = elapsedTime; 
+
+        while (elapsedTime > 0f)
+        {
+            elapsedTime -= Time.deltaTime;
+            float normalizedValue = Mathf.Clamp01(elapsedTime / decreaseDuration); // Normalize to 0-1 range
+            stats.shieldDurationBar.SetValue(normalizedValue * duration); // Gradually decrease the value
+
+            yield return null; 
+        }
+
+        // Once fully decreased, hide the bar
+        stats.shieldDurationBar.gameObject.SetActive(false);
     }
 
     public void Attack() 
     {
         isNormalActive = true;
-        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, isNormalActive, 2f));
+        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, 2f));
     }
 
     public void SuperAttack() 
     {
         isSuperActive = true;
-        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, isSuperActive, 3f));
+        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, 3f));
     }
-
+    
     private void Block(bool active) 
     {                
         if(active) 
@@ -94,62 +141,19 @@ public class CharacterCombat : MonoBehaviour
             TransformLerp(shield, shieldEndPos, 2f);
             circleCol.enabled = true;
             isBlockActive = true;
+
+            StartCoroutine(BlockDurationIncrease(3f));   
         }
         else 
         {
             TransformLerp(shield, shieldStartPos, 2f);
             circleCol.enabled = false;
             isBlockActive = false;
+
+            StopAllCoroutines();
+            StartCoroutine(BlockDurationDecrease(3f));  
         }
     }
-
-    // private IEnumerator EnergyPoints() 
-    // {
-    //     // Decrease value
-    //     if(stats.currentEnergyPoints.GetValue() > 0 && stats.currentEnergyPoints.GetValue() <= stats.maxEnergyPoints.GetValue()) 
-    //     {
-    //         // Decrease points
-    //     }
-    //     else if(stats.currentEnergyPoints.GetValue() <= 0 && stats.currentEnergyPoints.GetValue() < stats.maxEnergyPoints.GetValue()) 
-    //     {
-    //         // Increase
-    //     }
-
-    //     yield break;
-    // }
-
-    // private IEnumerator EnergyPoints() 
-    // {
-    //     // While loop to keep checking energy conditions
-    //     while (true)
-    //     {
-    //         // Decrease energy points if the player is actively doing something that costs energy (placeholder condition)
-    //         if (stats.currentEnergyPoints.GetValue() > 0 && stats.currentEnergyPoints.GetValue() <= stats.maxEnergyPoints.GetValue()) 
-    //         {
-    //             // Placeholder condition to decrease energy points (e.g., player is sprinting or using an ability)
-    //             if (/* Condition for decreasing energy, e.g., isSprinting or isUsingAbility */) 
-    //             {
-    //                 stats.currentEnergyPoints.SetValue(stats.currentEnergyPoints.GetValue() - 1);
-    //                 Debug.Log("Energy decreased: " + stats.currentEnergyPoints.GetValue());
-    //             }
-    //         }
-            
-    //         // Increase energy points when they are below the max but not zero
-    //         else if (stats.currentEnergyPoints.GetValue() <= 0 || stats.currentEnergyPoints.GetValue() < stats.maxEnergyPoints.GetValue()) 
-    //         {
-    //             // Placeholder condition to increase energy points (e.g., player is resting)
-    //             if (/* Condition for increasing energy, e.g., isResting */) 
-    //             {
-    //                 stats.currentEnergyPoints.SetValue(stats.currentEnergyPoints.GetValue() + 1);
-    //                 Debug.Log("Energy increased: " + stats.currentEnergyPoints.GetValue());
-    //             }
-    //         }
-
-    //         // Yield for a short duration before the next energy update
-    //         yield return new WaitForSeconds(1f);
-    //     }
-    // }
-
     
     private IEnumerator MoveObject(
         GameObject @object, 
@@ -158,7 +162,6 @@ public class CharacterCombat : MonoBehaviour
         Quaternion objectStartRot, 
         Quaternion objectEndRot, 
         bool isMoving,
-        bool isAttackActive, 
         float lerpDuration
     ) 
     {
@@ -179,9 +182,9 @@ public class CharacterCombat : MonoBehaviour
 
         yield return new WaitForSeconds(.5f);
 
-        HandleAttackStates(isWeaponMoving, ref isAttackActive, ref isSuperActive, ability, abilitySpawnPoint);
-        HandleAttackStates(isWeaponMoving, ref isAttackActive, ref isNormalActive);
-        HandleAttackStates(isShieldMoving, ref isAttackActive, ref isBlockActive);
+        HandleAttackStates(isWeaponMoving, ref isSuperActive, ability, abilitySpawnPoint);
+        HandleAttackStates(isWeaponMoving, ref isNormalActive);
+        HandleAttackStates(isShieldMoving, ref isBlockActive);
 
         if(ReturnObjectPosAndRot(@object, objectEndPos, objectEndRot)) 
         {
@@ -221,9 +224,9 @@ public class CharacterCombat : MonoBehaviour
         }
     }
 
-    private void HandleAttackStates(bool isObjectMoving, ref bool isAttackActive, ref bool abilityActiveState, GameObject abilityPrefab = null, Transform abilitySpawnPoint = null) 
+    private void HandleAttackStates(bool isObjectMoving, ref bool abilityActiveState, GameObject abilityPrefab = null, Transform abilitySpawnPoint = null) 
     {
-        if(isObjectMoving && isAttackActive == abilityActiveState) 
+        if(isObjectMoving && abilityActiveState) 
         {
             if(abilityPrefab != null && abilitySpawnPoint != null) 
             {
@@ -232,7 +235,6 @@ public class CharacterCombat : MonoBehaviour
             }
         }
 
-        isAttackActive = false;
         abilityActiveState = false;
     }
 
@@ -245,43 +247,4 @@ public class CharacterCombat : MonoBehaviour
 
         return false;
     }
-
-    // void OnDrawGizmos() 
-    // {
-    //     Gizmos.color = Color.green;
-    //     if(cirlceCol != null) 
-    //     {
-    //         Vector3 colliderCenter = shieldSpawnPoint.position + (Vector3)cirlceCol.offset;
-    //         Gizmos.DrawWireSphere(colliderCenter, cirlceCol.radius);
-    //     }
-    // }
 }
-
-// if(isWeaponMoving && isAttackActive == isSuperActive) 
-// {
-//     GameObject superAbility = Instantiate(ability, abilitySpawnPoint.position, quaternion.identity);
-//     superAbility.transform.SetParent(transform);
-
-//     isAttackActive = false;
-//     isSuperActive = isAttackActive;
-// }
-// else if(isWeaponMoving && isAttackActive == isNormalActive)
-// {
-//     isAttackActive = false;
-//     isNormalActive = isAttackActive;
-// }
-// else if(isShieldMoving && isAttackActive == isBlockActive) 
-// {
-//     isAttackActive = false;
-//     isBlockActive = isAttackActive;
-// }
-
-// Queue attack
-// if(isQueued) 
-// {
-//     isQueued = false;
-//     StartCoroutine(MoveObject(@object, objectStartPos, objectEndPos, objectStartRot, objectEndRot, isMoving, lerpDuration));
-//     combatState = CharacterCombatState.IDLE;
-// }
-
-// yield break;
