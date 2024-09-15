@@ -11,9 +11,9 @@ public class CharacterCombat : MonoBehaviour
     [SerializeField] private Transform abilitySpawnPoint;
     [SerializeField] private bool isWeaponMoving, isShieldMoving;
     
-    private Vector3 wpnStartPos, wpnEndPos;
+    private Vector3 wpnStartPos, wpnEndPos, shieldStartPos, shieldEndPos;
     private Quaternion wpnStartRot, wpnEndRot;
-    private bool isNormalActive, isSuperActive, isBlockActive, shieldRelease, isQueued;
+    private bool isNormalActive, isSuperActive, isBlockActive, isQueued;
 
     void Awake() 
     { 
@@ -26,12 +26,15 @@ public class CharacterCombat : MonoBehaviour
         wpnStartPos = new Vector3(.6f, .65f, 0f);
         wpnStartRot = new Quaternion(0f, 0f, 0.573576391f, 0.819152117f);
 
+        shieldStartPos = new Vector3(.5f, -.5f, 0f);
+
         // weapon & shield end position & rotation init
         wpnEndPos = new Vector3(1.35f, .15f, 0f);
         wpnEndRot = new Quaternion(0f, 0f, 0.130526155f, 0.991444886f);
 
+        shieldEndPos = new Vector3(0.5f, 0f, 0f);
         weapon.transform.SetLocalPositionAndRotation(wpnStartPos, wpnStartRot);
-        // shield.transform.SetLocalPositionAndRotation(shieldStartPos, shieldStartRot);
+        shield.transform.SetLocalPositionAndRotation(shieldStartPos, shield.transform.localRotation);
     }
 
     // Move this to the character class
@@ -55,22 +58,17 @@ public class CharacterCombat : MonoBehaviour
             break; 
         }
 
-        if(!isSuperActive && Input.GetKeyDown(KeyCode.Q)) combatState = CharacterCombatState.ATTACK;
+        if(!isSuperActive && !isBlockActive && Input.GetKeyDown(KeyCode.Q)) combatState = CharacterCombatState.ATTACK;
         
-        else if(!isNormalActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
+        else if(!isNormalActive && !isBlockActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
         
         if(!isNormalActive && !isSuperActive && Input.GetKeyDown(KeyCode.LeftShift)) combatState = CharacterCombatState.BLOCK;
 
-        else if(Input.GetKeyUp(KeyCode.LeftShift))
+        if(Input.GetKeyUp(KeyCode.LeftShift))
         {
-            shieldRelease = true;
-            combatState = CharacterCombatState.IDLE;
-        } 
-
-        if(shieldRelease)
-        {
-            shield.SetActive(false);
+            TransformLerp(shield, shieldStartPos, 2f);
             isBlockActive = false;
+            combatState = CharacterCombatState.IDLE;
         } 
     }
 
@@ -88,9 +86,9 @@ public class CharacterCombat : MonoBehaviour
 
     private void Block() 
     {
-        StartCoroutine(ShieldActivation());
-
-        // StartCoroutine(MoveObject(shield, shieldStartPos, shieldEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, isSuperActive, 3f));
+        isBlockActive = true;
+        TransformLerp(shield, shieldEndPos, 2f);
+        // StartCoroutine(MoveObject(shield, shieldStartPos, shieldEndPos, new Quaternion(0f, 0f, 0f, 0f), new Quaternion(0f, 0f, 0f, 0f), isShieldMoving, isBlockActive, 3f));
     }
 
     private IEnumerator ShieldActivation() 
@@ -105,7 +103,7 @@ public class CharacterCombat : MonoBehaviour
 
         yield break;
     }
-
+    
     private IEnumerator MoveObject(
         GameObject @object, 
         Vector3 objectStartPos, 
@@ -123,31 +121,31 @@ public class CharacterCombat : MonoBehaviour
         {
             // Move to destination
             TransformLerp(@object, objectEndPos, lerpDuration);
-            RotateLerp(@object, objectEndRot, lerpDuration);
 
-            isMoving = true;
-            // if(@object == weapon) 
+            if(@object != shield) RotateLerp(@object, objectEndRot, lerpDuration);
+
+            isMoving = true; 
             isWeaponMoving = isMoving;  
             
-            // else if(@object == shield) isShieldMoving = isMoving;
+            if(@object == shield) isShieldMoving = isMoving;
         }
 
         yield return new WaitForSeconds(.5f);
 
         HandleAttackStates(isWeaponMoving, ref isAttackActive, ref isSuperActive, ability, abilitySpawnPoint);
         HandleAttackStates(isWeaponMoving, ref isAttackActive, ref isNormalActive);
+        HandleAttackStates(isShieldMoving, ref isAttackActive, ref isBlockActive);
 
         if(ReturnObjectPosAndRot(@object, objectEndPos, objectEndRot)) 
         {
             // Move back to start position
             TransformLerp(@object, objectStartPos, lerpDuration);
-            RotateLerp(@object, objectStartRot, lerpDuration);
+            if(@object != shield) RotateLerp(@object, objectStartRot, lerpDuration);
 
             isMoving = false;
-            // if(@object == weapon) 
             isWeaponMoving = isMoving;  
 
-            // else if(@object == shield) isShieldMoving = isMoving;
+            if(@object == shield) isShieldMoving = isMoving;
         }
 
         combatState = CharacterCombatState.IDLE;
