@@ -7,17 +7,18 @@ public class CharacterCombat : MonoBehaviour
 {
     private enum CharacterCombatState { IDLE, ATTACK, BLOCK, SUPERATTACK }
     [SerializeField] private CharacterCombatState combatState;
-
-    [SerializeField] private GameObject weapon, shield, superAttackAbility;
-    [SerializeField] private Transform superAttackPoint;
+    [SerializeField] private GameObject weapon, shield, ability;
+    [SerializeField] private Transform abilitySpawnPoint;
+    [SerializeField] private bool isWeaponMoving, isShieldMoving;
     
-    // public bool ableToDoDamage;
-    private Vector3 wpnStartPos, wpnEndPos, shieldStartPos, shieldEndPos;
-    private Quaternion wpnStartRot, wpnEndRot, shieldStartRot, shieldEndRot;
-    private readonly bool isWeaponMoving, isShieldMoving;
-    private bool isQueued, isNoramlActive, isSuperActive, isBlockActive;
+    private Vector3 wpnStartPos, wpnEndPos;
+    private Quaternion wpnStartRot, wpnEndRot;
+    private bool isNormalActive, isSuperActive, isBlockActive, shieldRelease, isQueued;
 
-    void Awake() { combatState = CharacterCombatState.IDLE; }
+    void Awake() 
+    { 
+        combatState = CharacterCombatState.IDLE; 
+    }
 
     void Start() 
     {
@@ -25,20 +26,15 @@ public class CharacterCombat : MonoBehaviour
         wpnStartPos = new Vector3(.6f, .65f, 0f);
         wpnStartRot = new Quaternion(0f, 0f, 0.573576391f, 0.819152117f);
 
-        shieldStartPos = new();
-        shieldStartRot = new(); 
-
         // weapon & shield end position & rotation init
         wpnEndPos = new Vector3(1.35f, .15f, 0f);
         wpnEndRot = new Quaternion(0f, 0f, 0.130526155f, 0.991444886f);
-
-        shieldEndPos = new();
-        shieldEndRot = new();
 
         weapon.transform.SetLocalPositionAndRotation(wpnStartPos, wpnStartRot);
         // shield.transform.SetLocalPositionAndRotation(shieldStartPos, shieldStartRot);
     }
 
+    // Move this to the character class
     void Update() 
     {
         switch (combatState)
@@ -49,6 +45,7 @@ public class CharacterCombat : MonoBehaviour
             break;
 
             case CharacterCombatState.BLOCK:
+                Block();
 
             break;
 
@@ -60,66 +57,102 @@ public class CharacterCombat : MonoBehaviour
 
         if(!isSuperActive && Input.GetKeyDown(KeyCode.Q)) combatState = CharacterCombatState.ATTACK;
         
-        else if(!isNoramlActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
+        else if(!isNormalActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
         
-        else if(Input.GetKeyDown(KeyCode.E)) combatState = CharacterCombatState.BLOCK;
+        if(!isNormalActive && !isSuperActive && Input.GetKeyDown(KeyCode.LeftShift)) combatState = CharacterCombatState.BLOCK;
+
+        else if(Input.GetKeyUp(KeyCode.LeftShift))
+        {
+            shieldRelease = true;
+            combatState = CharacterCombatState.IDLE;
+        } 
+
+        if(shieldRelease)
+        {
+            shield.SetActive(false);
+            isBlockActive = false;
+        } 
     }
 
     public void Attack() 
     {
-        isNoramlActive = true;
-        
-        // Start animation // Control the animation from another script
-
-        // if(isWeaponMoving) isQueued = true;
-        // else StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, 2f));
-        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, 2f));
+        isNormalActive = true;
+        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, isNormalActive, 2f));
     }
 
     public void SuperAttack() 
     {
-    
         isSuperActive = true;
-
-        // Start animation // Control the animation from another script
-        
-        // Shoot fireball
-        // if(isWeaponMoving) isQueued = true;
-        // else StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, 2f));
-        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, 2f));
-    
-        // StartCoroutine(MoveWeapon()); 
-        
-        // Check if there is a colision between the this object and the other object
-        
-        // If there is collision
-        
-        // Get the opponen's stats script and apply damage
-
+        StartCoroutine(MoveObject(weapon, wpnStartPos, wpnEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, isSuperActive, 3f));
     }
 
     private void Block() 
     {
- 
+        StartCoroutine(ShieldActivation());
+
+        // StartCoroutine(MoveObject(shield, shieldStartPos, shieldEndPos, wpnStartRot, wpnEndRot, isWeaponMoving, isSuperActive, 3f));
+    }
+
+    private IEnumerator ShieldActivation() 
+    {                
+        shield.SetActive(true);
         isBlockActive = true;
         
-        // Start animation
+        yield return new WaitForSeconds(.5f);
 
-        // Block
-        if(isShieldMoving) isQueued = true;
-        else StartCoroutine(MoveObject(shield, shieldStartPos, shieldEndPos, shieldStartRot, shieldEndRot, isShieldMoving, 1.5f));
-        
+        shield.SetActive(false);
+        isBlockActive = false;
 
-        // Start animation // Control the animation from another script
-        
-        // Block
-
-        // Check if there is a colision between the this object and the other object
-        
-        // If blocked
-        
-        // Decrease armor
+        yield break;
     }
+
+    private IEnumerator MoveObject(
+        GameObject @object, 
+        Vector3 objectStartPos, 
+        Vector3 objectEndPos, 
+        Quaternion objectStartRot, 
+        Quaternion objectEndRot, 
+        bool isMoving,
+        bool isAttackActive, 
+        float lerpDuration
+    ) 
+    {
+        if(isMoving) yield break;
+
+        if(ReturnObjectPosAndRot(@object, objectStartPos, objectStartRot)) 
+        {
+            // Move to destination
+            TransformLerp(@object, objectEndPos, lerpDuration);
+            RotateLerp(@object, objectEndRot, lerpDuration);
+
+            isMoving = true;
+            // if(@object == weapon) 
+            isWeaponMoving = isMoving;  
+            
+            // else if(@object == shield) isShieldMoving = isMoving;
+        }
+
+        yield return new WaitForSeconds(.5f);
+
+        HandleAttackStates(isWeaponMoving, ref isAttackActive, ref isSuperActive, ability, abilitySpawnPoint);
+        HandleAttackStates(isWeaponMoving, ref isAttackActive, ref isNormalActive);
+
+        if(ReturnObjectPosAndRot(@object, objectEndPos, objectEndRot)) 
+        {
+            // Move back to start position
+            TransformLerp(@object, objectStartPos, lerpDuration);
+            RotateLerp(@object, objectStartRot, lerpDuration);
+
+            isMoving = false;
+            // if(@object == weapon) 
+            isWeaponMoving = isMoving;  
+
+            // else if(@object == shield) isShieldMoving = isMoving;
+        }
+
+        combatState = CharacterCombatState.IDLE;
+    }
+
 
     private void TransformLerp(GameObject @object, Vector2 destination, float duration) 
     {
@@ -143,52 +176,67 @@ public class CharacterCombat : MonoBehaviour
         }
     }
 
-    private IEnumerator MoveObject(
-        GameObject @object, 
-        Vector3 objectStartPos, 
-        Vector3 objectEndPos, 
-        Quaternion objectStartRot, 
-        Quaternion objectEndRot, 
-        bool isMoving, 
-        float lerpDuration
-    ) 
+    private void HandleAttackStates(bool isObjectMoving, ref bool isAttackActive, ref bool abilityActiveState, GameObject abilityPrefab = null, Transform abilitySpawnPoint = null) 
     {
-        if(isMoving) yield break;
-
-        if(@object.transform.localPosition == objectStartPos && @object.transform.localRotation == objectStartRot) 
+        if(isObjectMoving && isAttackActive == abilityActiveState) 
         {
-            // Move to destination
-            TransformLerp(@object, objectEndPos, lerpDuration);
-            RotateLerp(@object, objectEndRot, lerpDuration);
+            if(abilityPrefab != null && abilitySpawnPoint != null) 
+            {
+                GameObject ability = Instantiate(abilityPrefab, abilitySpawnPoint.position, quaternion.identity);
+                ability.transform.SetParent(transform);
+            }
         }
 
-        yield return new WaitForSeconds(.5f);
-        
-        if(isSuperActive) 
-        {
-            GameObject superAbility = Instantiate(superAttackAbility, superAttackPoint.position, quaternion.identity);
-            superAbility.transform.SetParent(transform);
-            isSuperActive = false;
-        }
-
-        if(@object.transform.localPosition == objectEndPos && @object.transform.localRotation == objectEndRot) 
-        {
-            // Move back to start position
-            TransformLerp(@object, objectStartPos, lerpDuration);
-            RotateLerp(@object, objectStartRot, lerpDuration);
-        } 
-
-        isMoving = false;
-        combatState = CharacterCombatState.IDLE;
-
+        isAttackActive = false;
+        abilityActiveState = false;
     }
-}
-        // Queue attack
-        // if(isQueued) 
-        // {
-        //     isQueued = false;
-        //     StartCoroutine(MoveObject(@object, objectStartPos, objectEndPos, objectStartRot, objectEndRot, isMoving, lerpDuration));
-        //     combatState = CharacterCombatState.IDLE;
-        // }
 
-        // yield break;
+    private bool ReturnObjectPosAndRot(GameObject @object, Vector3 v, Quaternion r)  
+    {
+        if(@object.transform.localPosition == v && @object.transform.localRotation == r) 
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    // void OnDrawGizmos() 
+    // {
+    //     Gizmos.color = Color.green;
+    //     if(cirlceCol != null) 
+    //     {
+    //         Vector3 colliderCenter = shieldSpawnPoint.position + (Vector3)cirlceCol.offset;
+    //         Gizmos.DrawWireSphere(colliderCenter, cirlceCol.radius);
+    //     }
+    // }
+}
+
+// if(isWeaponMoving && isAttackActive == isSuperActive) 
+// {
+//     GameObject superAbility = Instantiate(ability, abilitySpawnPoint.position, quaternion.identity);
+//     superAbility.transform.SetParent(transform);
+
+//     isAttackActive = false;
+//     isSuperActive = isAttackActive;
+// }
+// else if(isWeaponMoving && isAttackActive == isNormalActive)
+// {
+//     isAttackActive = false;
+//     isNormalActive = isAttackActive;
+// }
+// else if(isShieldMoving && isAttackActive == isBlockActive) 
+// {
+//     isAttackActive = false;
+//     isBlockActive = isAttackActive;
+// }
+
+// Queue attack
+// if(isQueued) 
+// {
+//     isQueued = false;
+//     StartCoroutine(MoveObject(@object, objectStartPos, objectEndPos, objectStartRot, objectEndRot, isMoving, lerpDuration));
+//     combatState = CharacterCombatState.IDLE;
+// }
+
+// yield break;

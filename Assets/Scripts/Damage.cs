@@ -4,20 +4,6 @@ public class Damage : MonoBehaviour
 {
     void OnTriggerEnter2D(Collider2D collider) 
     {
-        if(collider.CompareTag("Player")) 
-        {
-            Debug.Log("Hitt the player");
-
-            var player = collider.gameObject;
-
-            if(player.TryGetComponent<CharacterStats>(out var stats)) 
-            {
-                // if(combat.ableToDoDamage) 
-                // {
-                    stats.TakeDamage(20f);
-                    Debug.Log("Damage done...");
-                // }
-            }
-        }
+        if(collider.CompareTag("Player")) if(collider.gameObject.TryGetComponent<CharacterStats>(out var stats)) stats.TakeDamage(20f);
     } 
 }

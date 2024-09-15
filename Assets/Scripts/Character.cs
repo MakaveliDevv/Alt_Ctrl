@@ -3,9 +3,7 @@ using UnityEngine;
 
 public class Character : CharacterStats
 { 
-    [SerializeField] private KeyboardMovement keyboardMovement;
-    [SerializeField] private Rigidbody2D rb;
-
+    private KeyboardMovement keyboardMovement;
     private IMovementInputGetter movementInputGetter;
     
     void Awake() 
@@ -14,8 +12,6 @@ public class Character : CharacterStats
 
         if(TryGetComponent<IMovementInputGetter>(out var _movement)) movementInputGetter = _movement;
         else movementInputGetter = null;
-         
-        rb = GetComponent<Rigidbody2D>();
     }
 
     void Start() 
@@ -42,26 +38,6 @@ public class Character : CharacterStats
         transform.Translate(movement);
 
     }
-    
-    // public IEnumerator Jump() 
-    // {
-    //     float elapsedTime = 0f;
-    //     float jumpDuration = 1f;
-
-    //     while(elapsedTime < jumpDuration) 
-    //     {
-    //         Vector2 jump = new() 
-    //         {
-                
-    //         };
-    //         keyboardMovement.Vertical = 1f;
-    //         elapsedTime += Time.deltaTime;
-    //     }
-
-    //     if(elapsedTime >= 1f) keyboardMovement.Vertical = 0f;
-
-    //     yield break;
-    // }
 
     public IEnumerator Jump() 
     {
