@@ -1,29 +1,21 @@
-using System;
+using System.Collections;
 using UnityEngine;
 
 public class Character : CharacterStats
 { 
-    private IMovementInputGetter movementInputGetter;
-    private KeyboardMovement keyboardMovement;
-    private CharacterCombat char_combat;
+    [SerializeField] private KeyboardMovement keyboardMovement;
+    [SerializeField] private Rigidbody2D rb;
 
+    private IMovementInputGetter movementInputGetter;
+    
     void Awake() 
     {
-        if(TryGetComponent<IMovementInputGetter>(out var _movement))
-            movementInputGetter = _movement;
+        if (keyboardMovement == null) keyboardMovement = GetComponent<KeyboardMovement>();
 
-        else
-            movementInputGetter = null;
-
-
-        if(TryGetComponent<CharacterCombat>(out var _combat))   
-            char_combat = _combat;
-        
-        else 
-            char_combat = null;
+        if(TryGetComponent<IMovementInputGetter>(out var _movement)) movementInputGetter = _movement;
+        else movementInputGetter = null;
          
-
-        keyboardMovement = GetComponent<KeyboardMovement>();
+        rb = GetComponent<Rigidbody2D>();
     }
 
     void Start() 
@@ -33,14 +25,9 @@ public class Character : CharacterStats
     
     void Update() 
     {
-        if(movementInputGetter != null)
-            Move();
+        if(movementInputGetter != null) Move();
 
-        if(char_combat != null) 
-        {
-            char_combat.Attack();
-            char_combat.SuperAttack();
-        }
+        if(Input.GetKeyDown(KeyCode.Space)) StartCoroutine(Jump());
     }
 
     protected void Move() 
@@ -56,18 +43,43 @@ public class Character : CharacterStats
 
     }
     
-    public void Jump() 
+    // public IEnumerator Jump() 
+    // {
+    //     float elapsedTime = 0f;
+    //     float jumpDuration = 1f;
+
+    //     while(elapsedTime < jumpDuration) 
+    //     {
+    //         Vector2 jump = new() 
+    //         {
+                
+    //         };
+    //         keyboardMovement.Vertical = 1f;
+    //         elapsedTime += Time.deltaTime;
+    //     }
+
+    //     if(elapsedTime >= 1f) keyboardMovement.Vertical = 0f;
+
+    //     yield break;
+    // }
+
+    public IEnumerator Jump() 
     {
-        if(Input.GetKeyDown(KeyCode.Space)) 
+        float elapsedTime = 0f;
+        float jumpDuration = 1f;
+
+        // Start jump
+        if(keyboardMovement != null) keyboardMovement.SetJumping(true);
+
+        while (elapsedTime < jumpDuration) 
         {
-            float elapsedTime = 0f;
-            float jumpDuration = 1f;
-            
-            while(elapsedTime < jumpDuration) 
-            {
-                keyboardMovement.Vertical = 1f;
-                elapsedTime += Time.deltaTime;
-            }
+            elapsedTime += Time.deltaTime;
+            yield return null;
         }
+
+        // End jump
+        if(keyboardMovement != null) keyboardMovement.SetJumping(false);
+
+        yield break;
     }
 }
