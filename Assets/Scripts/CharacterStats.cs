@@ -15,24 +15,10 @@ public class CharacterStats : MonoBehaviour
     [SerializeField] private Bar healthBar;
     [SerializeField] private Bar energyBar;
     public Bar shieldDurationBar;
-
-    private SerialPort data_Stream = new("COM5", 9600);
+    public GameManager gameManager;
 
     void Start() 
-    {
-        try
-        {
-            if (!data_Stream.IsOpen)
-            {
-                data_Stream.Open();
-                Debug.Log("Serial port opened successfully.");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError("Error opening serial port: " + e.Message);
-        }
-        
+    {        
         currentHealth.SetValue(maxHealth.GetValue());
         healthBar.SetMaxValue(currentHealth.GetValue());
         currentEnergy.SetValue(maxEnergy.GetValue());
@@ -49,22 +35,12 @@ public class CharacterStats : MonoBehaviour
         SendHealthToArduino(); // Send updated health value
     }
 
-    // private void SendHealthToArduino() 
-    // {
-    //     if (data_Stream.IsOpen) 
-    //     {
-    //         int healthPercent = (int)(currentHealth.GetValue() / maxHealth.GetValue() * 100);
-    //         data_Stream.WriteLine($"HP:{healthPercent}"); // Send health percentage to Arduino
-    //         Debug.Log("Sent Health to Arduino: " + healthPercent);
-    //     }
-    // }
-
     private void SendHealthToArduino() 
     {
-        if (data_Stream != null && data_Stream.IsOpen) 
+        if (gameManager.arduino.data_Stream != null && gameManager.arduino.data_Stream.IsOpen) 
         {
             int healthPercent = (int)((currentHealth.GetValue() / maxHealth.GetValue()) * 100);
-            data_Stream.WriteLine($"HP:{healthPercent}"); // Send health percentage to Arduino
+            gameManager.arduino.data_Stream.WriteLine($"HP:{healthPercent}"); // Send health percentage to Arduino
             Debug.Log("Sent Health to Arduino: HP:" + healthPercent);
         }
         else
@@ -90,9 +66,9 @@ public class CharacterStats : MonoBehaviour
 
     void OnApplicationQuit()
     {
-        if (data_Stream != null && data_Stream.IsOpen)
+        if (gameManager.arduino.data_Stream != null && gameManager.arduino.data_Stream.IsOpen)
         {
-            data_Stream.Close();
+            gameManager.arduino.data_Stream.Close();
             Debug.Log("Serial port closed.");
         }
     }

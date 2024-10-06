@@ -21,8 +21,10 @@ public class CharacterCombat : MonoBehaviour
     private bool isBlockMaxedOut; 
     private float extraDecreaseTime = 3f; 
 
-    private readonly SerialPort data_Stream = new("COM5", 9600);
+    // private readonly SerialPort data_Stream = new("COM5", 9600);
     private string value;
+
+    public GameManager gameManager;
 
     void Awake() 
     { 
@@ -32,16 +34,7 @@ public class CharacterCombat : MonoBehaviour
     }
 
     void Start() 
-    {
-        // try
-        // {
-        //     data_Stream.Open();
-        // }
-        // catch (System.Exception e)
-        // {
-        //     Debug.LogError("Error opening serial port: " + e.Message);
-        // }
-        
+    {        
         // Weapon & shield start position & rotation init
         wpnStartPos = new Vector3(.6f, .65f, 0f);
         wpnStartRot = new Quaternion(0f, 0f, 0.573576391f, 0.819152117f);
@@ -61,14 +54,16 @@ public class CharacterCombat : MonoBehaviour
     void Update() 
     {
         // Check for serial data from Arduino
-        if (data_Stream.IsOpen && data_Stream.BytesToRead > 0)
+        if (gameManager.arduino.data_Stream.IsOpen && gameManager.arduino.data_Stream.BytesToRead > 0)
         {
-            value = data_Stream.ReadLine().Trim();
+            value = gameManager.arduino.data_Stream.ReadLine().Trim();
             Debug.Log("Received value: " + value); // Debug message
 
             // Force sensor logic
-            if (int.TryParse(value, out int sensorValue) && sensorValue >= 200) 
+            if (int.TryParse(value, out int sensorValue) && sensorValue >= 50) 
             {
+                Debug.Log("Sensor value over 50");
+                
                 if (!isNormalActive && !isBlockActive)
                 {
                     combatState = CharacterCombatState.SUPERATTACK;
@@ -85,72 +80,6 @@ public class CharacterCombat : MonoBehaviour
                 }
             }
         }
-    
-                // // Extract rotation and acceleration values
-                // string[] parts = value.Split(',');
-                // if (parts.Length == 2)
-                // {
-                //     string rotatedPart = parts[0].Split(':')[1].Trim();
-                //     // string accelPart = parts[1].Split(':')[1].Trim();
-
-                //     bool hasRotated = rotatedPart == "1";
-                //     // bool hasAccelerated = accelPart == "1";
-
-                //     // Check if both conditions are met for normal attack
-                //     if (hasRotated && !isSuperActive && !isBlockActive)
-                //     {
-                //         combatState = CharacterCombatState.ATTACK;
-                //         Debug.Log("Normal Attack triggered by MPU-board!");
-                //     }
-                // }
-     
-
-            // MPU logic for NORMALATTACK
-            // else if (value == "NORMALATTACK")
-            // {
-            //     if (!isNormalActive && !isBlockActive && !isSuperActive)
-            //     {
-            //         combatState = CharacterCombatState.ATTACK;
-            //         Debug.Log("Combat state set to NORMALATTACK"); // Debug message
-            //     }
-            // }
-
-            // else
-            // {
-            //     // Check for MPU rotation and acceleration data
-            //     string[] sensorData = value.Split(',');
-            //     if (sensorData.Length == 2 
-            //         && float.TryParse(sensorData[0], out float rotationValue) 
-            //         && float.TryParse(sensorData[1], out float accelerationValue))
-            //     {
-            //         float rotationThreshold = 90f; // Example threshold for rotation in degrees
-            //         float accelerationThreshold = .5f; // Example threshold for acceleration in g's
-
-            //         if (rotationValue >= rotationThreshold && accelerationValue >= accelerationThreshold)
-            //         {
-            //             if (!isNormalActive && !isBlockActive)
-            //             {
-            //                 combatState = CharacterCombatState.ATTACK;
-            //             }
-            //         }
-            //     }
-            // }
-        
-        // // Check for serial data from Arduino
-        // if (data_Stream.IsOpen && data_Stream.BytesToRead > 0)
-        // {
-        //     value = data_Stream.ReadLine().Trim();
-        //     Debug.Log("Received value: " + value); // Debug message
-
-        //     // Force sensor
-        //     if (int.TryParse(value, out int sensorValue) && sensorValue >= 200) 
-        //     {
-        //         if (!isNormalActive && !isBlockActive)
-        //         {
-        //             combatState = CharacterCombatState.SUPERATTACK;
-        //         }
-        //     }
-        // }
 
         switch (combatState)
         {
@@ -169,10 +98,6 @@ public class CharacterCombat : MonoBehaviour
 
             break; 
         }
-
-        // if(!isSuperActive && !isBlockActive && Input.GetKeyDown(KeyCode.Q)) combatState = CharacterCombatState.ATTACK;
-        
-        // else if(!isNormalActive && !isBlockActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
         
         if(!isNormalActive && !isSuperActive && Input.GetKeyDown(KeyCode.LeftShift))
         {

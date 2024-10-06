@@ -6,36 +6,19 @@ public class Character : CharacterStats
     private Rigidbody2D rb;
     public float jumpForce = 5f; // Adjust this value as needed
     public float moveSpeed = 5f;  // Adjust this value for horizontal movement
-    private bool isGrounded;
-
-    // Arduino
-    private readonly SerialPort data_Stream = new("COM5", 9600);
+    private bool isGrounded;    
     private string value;
-
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-
-        // try
-        // {
-        //     if (!data_Stream.IsOpen)
-        //     {
-        //         data_Stream.Open();
-        //         Debug.Log("Serial port opened successfully.");
-        //     }
-        // }
-        // catch (System.Exception e)
-        // {
-        //     Debug.LogError("Error opening serial port: " + e.Message);
-        // }
     }
 
     void Update()
     {
         // Check for serial data from Arduino
-        if (data_Stream.IsOpen && data_Stream.BytesToRead > 0)
+        if (gameManager.arduino.data_Stream.IsOpen && gameManager.arduino.data_Stream.BytesToRead > 0)
         {
-            value = data_Stream.ReadLine().Trim();
+            value = gameManager.arduino.data_Stream.ReadLine().Trim();
             Debug.Log("Received value: " + value); // Debug message
 
             // Handle jump
@@ -87,9 +70,9 @@ public class Character : CharacterStats
 
     void OnApplicationQuit()
     {
-        if (data_Stream != null && data_Stream.IsOpen)
+        if (gameManager.arduino.data_Stream != null && gameManager.arduino.data_Stream.IsOpen)
         {
-            data_Stream.Close();
+            gameManager.arduino.data_Stream.Close();
         }
     }
 }
