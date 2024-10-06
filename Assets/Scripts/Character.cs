@@ -1,62 +1,95 @@
-using System.Collections;
 using UnityEngine;
+using System.IO.Ports;
 
 public class Character : CharacterStats
-{ 
-    private KeyboardMovement keyboardMovement;
-    private IMovementInputGetter movementInputGetter;
+{
+    private Rigidbody2D rb;
+    public float jumpForce = 5f; // Adjust this value as needed
+    public float moveSpeed = 5f;  // Adjust this value for horizontal movement
+    private bool isGrounded;
 
-    
-    void Awake() 
+    // Arduino
+    private readonly SerialPort data_Stream = new("COM5", 9600);
+    private string value;
+
+    void Awake()
     {
-        if (keyboardMovement == null) keyboardMovement = GetComponent<KeyboardMovement>();
+        rb = GetComponent<Rigidbody2D>();
 
-        if(TryGetComponent<IMovementInputGetter>(out var _movement)) movementInputGetter = _movement;
-        else movementInputGetter = null;
+        // try
+        // {
+        //     if (!data_Stream.IsOpen)
+        //     {
+        //         data_Stream.Open();
+        //         Debug.Log("Serial port opened successfully.");
+        //     }
+        // }
+        // catch (System.Exception e)
+        // {
+        //     Debug.LogError("Error opening serial port: " + e.Message);
+        // }
     }
-    
-    void Update() 
+
+    void Update()
     {
-        if(movementInputGetter != null) Move();
+        // Check for serial data from Arduino
+        if (data_Stream.IsOpen && data_Stream.BytesToRead > 0)
+        {
+            value = data_Stream.ReadLine().Trim();
+            Debug.Log("Received value: " + value); // Debug message
 
-        if(Input.GetKeyDown(KeyCode.Space)) StartCoroutine(Jump());
+            // Handle jump
+            if (value == "JUMP" && isGrounded)
+            {
+                Jump();
+            }
+            // Handle left movement
+            else if (value == "LEFT")
+            {
+                MoveHorizontal(-moveSpeed);
+            }
+            // Handle right movement
+            else if (value == "RIGHT")
+            {
+                MoveHorizontal(moveSpeed);
+            }
+        }
 
-        if(Input.GetKeyDown(KeyCode.P)) 
+        if (Input.GetKeyDown(KeyCode.P))
         {
             TakeDamage(damage.GetValue());
         }
-    }
-
-    protected void Move() 
-    {
-        Vector2 movement = new()
-        {
-            x = movementInputGetter.Horizontal,
-            y = movementInputGetter.Vertical
-        };
-
-        movement *= movementSpeed.GetValue() * Time.deltaTime;
-        transform.Translate(movement);
 
     }
 
-    public IEnumerator Jump() 
+    private void Jump()
     {
-        float elapsedTime = 0f;
-        float jumpDuration = 1f;
-
-        // Start jump
-        if(keyboardMovement != null) keyboardMovement.SetJumping(true);
-
-        while (elapsedTime < jumpDuration) 
+        if (isGrounded)
         {
-            elapsedTime += Time.deltaTime;
-            yield return null;
+            rb.AddForce(new Vector2(0, jumpForce), ForceMode2D.Impulse);
+            isGrounded = false; // Prevent double jumping
         }
+    }
 
-        // End jump
-        if(keyboardMovement != null) keyboardMovement.SetJumping(false);
+    private void MoveHorizontal(float direction)
+    {
+        rb.velocity = new Vector2(direction, rb.velocity.y);
+    }
 
-        yield break;
+    // Ground detection
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Ground")) // Ensure the ground has this tag
+        {
+            isGrounded = true;
+        }
+    }
+
+    void OnApplicationQuit()
+    {
+        if (data_Stream != null && data_Stream.IsOpen)
+        {
+            data_Stream.Close();
+        }
     }
 }

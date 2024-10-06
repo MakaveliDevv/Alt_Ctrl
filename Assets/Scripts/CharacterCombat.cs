@@ -1,6 +1,7 @@
 using System.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using System.IO.Ports;
 
 [RequireComponent(typeof(CharacterStats))]
 public class CharacterCombat : MonoBehaviour
@@ -17,6 +18,12 @@ public class CharacterCombat : MonoBehaviour
     private Quaternion wpnStartRot, wpnEndRot;
     private bool isNormalActive, isSuperActive, isBlockActive, isQueued;
 
+    private bool isBlockMaxedOut; 
+    private float extraDecreaseTime = 3f; 
+
+    private readonly SerialPort data_Stream = new("COM5", 9600);
+    private string value;
+
     void Awake() 
     { 
         combatState = CharacterCombatState.IDLE; 
@@ -26,6 +33,15 @@ public class CharacterCombat : MonoBehaviour
 
     void Start() 
     {
+        // try
+        // {
+        //     data_Stream.Open();
+        // }
+        // catch (System.Exception e)
+        // {
+        //     Debug.LogError("Error opening serial port: " + e.Message);
+        // }
+        
         // Weapon & shield start position & rotation init
         wpnStartPos = new Vector3(.6f, .65f, 0f);
         wpnStartRot = new Quaternion(0f, 0f, 0.573576391f, 0.819152117f);
@@ -44,6 +60,98 @@ public class CharacterCombat : MonoBehaviour
     // Move this to the character class
     void Update() 
     {
+        // Check for serial data from Arduino
+        if (data_Stream.IsOpen && data_Stream.BytesToRead > 0)
+        {
+            value = data_Stream.ReadLine().Trim();
+            Debug.Log("Received value: " + value); // Debug message
+
+            // Force sensor logic
+            if (int.TryParse(value, out int sensorValue) && sensorValue >= 200) 
+            {
+                if (!isNormalActive && !isBlockActive)
+                {
+                    combatState = CharacterCombatState.SUPERATTACK;
+                    Debug.Log("Super Attack triggered by force sensor!");
+                }
+            }
+            else if (value.Contains("ROTATED:")) // Check for rotation message
+            {
+                Debug.Log("Rotation detected, setting combat state to NORMALATTACK.");
+                if (!isNormalActive && !isBlockActive)
+                {
+                    combatState = CharacterCombatState.ATTACK;
+                    Debug.Log("Normal Attack triggered by rotation!");
+                }
+            }
+        }
+    
+                // // Extract rotation and acceleration values
+                // string[] parts = value.Split(',');
+                // if (parts.Length == 2)
+                // {
+                //     string rotatedPart = parts[0].Split(':')[1].Trim();
+                //     // string accelPart = parts[1].Split(':')[1].Trim();
+
+                //     bool hasRotated = rotatedPart == "1";
+                //     // bool hasAccelerated = accelPart == "1";
+
+                //     // Check if both conditions are met for normal attack
+                //     if (hasRotated && !isSuperActive && !isBlockActive)
+                //     {
+                //         combatState = CharacterCombatState.ATTACK;
+                //         Debug.Log("Normal Attack triggered by MPU-board!");
+                //     }
+                // }
+     
+
+            // MPU logic for NORMALATTACK
+            // else if (value == "NORMALATTACK")
+            // {
+            //     if (!isNormalActive && !isBlockActive && !isSuperActive)
+            //     {
+            //         combatState = CharacterCombatState.ATTACK;
+            //         Debug.Log("Combat state set to NORMALATTACK"); // Debug message
+            //     }
+            // }
+
+            // else
+            // {
+            //     // Check for MPU rotation and acceleration data
+            //     string[] sensorData = value.Split(',');
+            //     if (sensorData.Length == 2 
+            //         && float.TryParse(sensorData[0], out float rotationValue) 
+            //         && float.TryParse(sensorData[1], out float accelerationValue))
+            //     {
+            //         float rotationThreshold = 90f; // Example threshold for rotation in degrees
+            //         float accelerationThreshold = .5f; // Example threshold for acceleration in g's
+
+            //         if (rotationValue >= rotationThreshold && accelerationValue >= accelerationThreshold)
+            //         {
+            //             if (!isNormalActive && !isBlockActive)
+            //             {
+            //                 combatState = CharacterCombatState.ATTACK;
+            //             }
+            //         }
+            //     }
+            // }
+        
+        // // Check for serial data from Arduino
+        // if (data_Stream.IsOpen && data_Stream.BytesToRead > 0)
+        // {
+        //     value = data_Stream.ReadLine().Trim();
+        //     Debug.Log("Received value: " + value); // Debug message
+
+        //     // Force sensor
+        //     if (int.TryParse(value, out int sensorValue) && sensorValue >= 200) 
+        //     {
+        //         if (!isNormalActive && !isBlockActive)
+        //         {
+        //             combatState = CharacterCombatState.SUPERATTACK;
+        //         }
+        //     }
+        // }
+
         switch (combatState)
         {
             case CharacterCombatState.ATTACK:
@@ -62,9 +170,9 @@ public class CharacterCombat : MonoBehaviour
             break; 
         }
 
-        if(!isSuperActive && !isBlockActive && Input.GetKeyDown(KeyCode.Q)) combatState = CharacterCombatState.ATTACK;
+        // if(!isSuperActive && !isBlockActive && Input.GetKeyDown(KeyCode.Q)) combatState = CharacterCombatState.ATTACK;
         
-        else if(!isNormalActive && !isBlockActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
+        // else if(!isNormalActive && !isBlockActive && Input.GetKeyDown(KeyCode.R)) combatState = CharacterCombatState.SUPERATTACK;
         
         if(!isNormalActive && !isSuperActive && Input.GetKeyDown(KeyCode.LeftShift))
         {
@@ -80,46 +188,52 @@ public class CharacterCombat : MonoBehaviour
 
     private IEnumerator BlockDurationIncrease(float duration)
     {
-        float elapsedTime = 0f;
-        stats.shieldDurationBar.gameObject.SetActive(true);
+        float elapsedTime = stats.shieldDurationBar.slider.value; 
         stats.shieldDurationBar.SetMaxValue(duration);
 
-        while (elapsedTime < duration && isBlockActive)  // Block is still active
+        while (elapsedTime < duration && isBlockActive)
         {
             elapsedTime += Time.deltaTime;
             stats.shieldDurationBar.SetValue(elapsedTime);
 
             yield return null;
         }
-
-        if (!isBlockActive)  // If the shield was dropped manually, stop increasing the bar
+        
+        if (elapsedTime >= duration)
         {
-            yield break;
+            isBlockMaxedOut = true; 
+            StartCoroutine(BlockDurationDecrease(duration)); 
+            Block(false); 
         }
-
-        // Once the duration has run out, disable the shield and bar
-        Block(false);
+        else
+        {
+            StartCoroutine(BlockDurationDecrease(elapsedTime));
+        }
+    
         combatState = CharacterCombatState.IDLE;
-
-        Debug.Log("Blocking stopped...");
     }
 
-   private IEnumerator BlockDurationDecrease(float duration)
+    private IEnumerator BlockDurationDecrease(float startValue)
     {
-        float elapsedTime = stats.shieldDurationBar.slider.value; 
-        float decreaseDuration = elapsedTime; 
+        float elapsedTime = startValue;
+        float decreaseDuration = startValue; 
+
+        if (isBlockMaxedOut)
+        {
+            decreaseDuration += extraDecreaseTime;
+        }
 
         while (elapsedTime > 0f)
         {
-            elapsedTime -= Time.deltaTime;
-            float normalizedValue = Mathf.Clamp01(elapsedTime / decreaseDuration); // Normalize to 0-1 range
-            stats.shieldDurationBar.SetValue(normalizedValue * duration); // Gradually decrease the value
+            elapsedTime -= Time.deltaTime * (startValue / decreaseDuration);
+            stats.shieldDurationBar.SetValue(elapsedTime);
 
-            yield return null; 
+            yield return null;
         }
 
         // Once fully decreased, hide the bar
-        stats.shieldDurationBar.gameObject.SetActive(false);
+        // stats.shieldDurationBar.gameObject.SetActive(false);
+        isBlockMaxedOut = false; 
     }
 
     public void Attack() 
@@ -136,12 +250,13 @@ public class CharacterCombat : MonoBehaviour
     
     private void Block(bool active) 
     {                
-        if(active) 
+        if(active && !isBlockMaxedOut) 
         {
             TransformLerp(shield, shieldEndPos, 2f);
             circleCol.enabled = true;
             isBlockActive = true;
 
+            StopAllCoroutines(); 
             StartCoroutine(BlockDurationIncrease(3f));   
         }
         else 
@@ -151,7 +266,9 @@ public class CharacterCombat : MonoBehaviour
             isBlockActive = false;
 
             StopAllCoroutines();
-            StartCoroutine(BlockDurationDecrease(3f));  
+
+            float currentValue = stats.shieldDurationBar.slider.value;
+            StartCoroutine(BlockDurationDecrease(currentValue));  
         }
     }
     
@@ -166,6 +283,8 @@ public class CharacterCombat : MonoBehaviour
     ) 
     {
         if(isMoving) yield break;
+
+        yield return new WaitForEndOfFrame();
 
         if(ReturnObjectPosAndRot(@object, objectStartPos, objectStartRot)) 
         {
@@ -184,7 +303,6 @@ public class CharacterCombat : MonoBehaviour
 
         HandleAttackStates(isWeaponMoving, ref isSuperActive, ability, abilitySpawnPoint);
         HandleAttackStates(isWeaponMoving, ref isNormalActive);
-        HandleAttackStates(isShieldMoving, ref isBlockActive);
 
         if(ReturnObjectPosAndRot(@object, objectEndPos, objectEndRot)) 
         {
